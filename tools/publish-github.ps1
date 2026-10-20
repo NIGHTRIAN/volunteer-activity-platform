@@ -278,13 +278,17 @@ try {
         $bundleZip = Get-ChildItem (Join-Path $Root 'dist') -Filter '*.zip' -ErrorAction SilentlyContinue |
             Select-Object -First 1 -ExpandProperty FullName
 
-        # ⚠️ 两个 APK 的产物文件名**完全相同**（都叫 app-arm64-v8a-release.apk）。
+        # ⚠️ 附件名**必须是纯 ASCII**：GitHub 会把非 ASCII 字符直接剥掉，
+        # `志愿活动-用户端.apk` 会变成 `-.apk`，两个 APK 再互相撞名 → 422。
+        #
+        # 另一个必须显式起名的原因：两个 APK 的产物文件名完全相同（都叫
+        # app-arm64-v8a-release.apk），直接按原名上传会互相覆盖。
         # 直接按原文件名上传，第二个会被 GitHub 当成重名拒绝（422 already_exists），
         # 下载端也分不清谁是谁。所以这里显式给附件起名。
         $candidates = @(
-            [pscustomobject]@{ Path = $apkUser;  Name = '志愿活动-用户端.apk' },
-            [pscustomobject]@{ Path = $apkAdmin; Name = '志愿活动-管理端.apk' },
-            [pscustomobject]@{ Path = $bundleZip; Name = $null }   # 保持原文件名
+            [pscustomobject]@{ Path = $apkUser;  Name = 'volunteer-user-app-arm64-v8a.apk' },
+            [pscustomobject]@{ Path = $apkAdmin; Name = 'volunteer-admin-app-arm64-v8a.apk' },
+            [pscustomobject]@{ Path = $bundleZip; Name = 'volunteer-platform-server-bundle.zip' }
         )
         $assets = @()
         foreach ($c in $candidates) {
@@ -309,15 +313,15 @@ try {
 
 ## 最快看到效果（Windows）
 
-1. 下载 `志愿活动平台-服务器整合包.zip` 并解压
+1. 下载 `volunteer-platform-server-bundle.zip`（服务器整合包）并解压
 2. 双击 `启动服务器.bat`（首次会弹 UAC 放行防火墙，点「是」）
 3. 服务起来后会自动打开浏览器，看到活动列表就成功了
 4. 手机装下面的 APK，管理端邀请码 `1111`
 
 ## 手机端
 
-- `志愿活动-管理端.apk`：组织者用（建活动 / 名单 / 看板 / 复核 / 导出）
-- `志愿活动-用户端.apk`：志愿者用（绑定活动 / 签到 / 在岗确认 / 查记录）
+- `volunteer-admin-app-arm64-v8a.apk`（管理端，组织者用：建活动 / 名单 / 看板 / 复核 / 导出）
+- `volunteer-user-app-arm64-v8a.apk`（用户端，志愿者用：绑定活动 / 签到 / 在岗确认 / 查记录）
 
 > 仅提供 arm64-v8a（覆盖近几年主流安卓机）。其他架构请从源码构建，见 README「方式三」。
 '@
