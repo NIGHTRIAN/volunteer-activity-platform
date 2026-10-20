@@ -88,7 +88,7 @@
 
 ### 方式一：只想看看效果（最快，Windows，1 分钟）
 
-1. 从 Releases 下载 `志愿活动平台-服务器整合包.zip`（约 51 MB，内含 Node 运行时与两个 APK）
+1. 从 Releases 下载 `volunteer-platform-server-bundle.zip`（服务器整合包，约 51 MB，内含 Node 运行时与两个 APK）
 2. 解压，双击 **`启动服务器.bat`**
 3. 第一次会弹一次 UAC（放行防火墙），点「是」
 4. 服务起来后**自动打开浏览器**，看到活动列表就成功了

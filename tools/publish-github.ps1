@@ -382,14 +382,15 @@ try {
     Say '  ============================================================' 'Cyan'
     Say '   发布完成' 'Green'
     Say '  ============================================================' 'Cyan'
-    Say "    仓库地址   $plainUrl" 'White'
-    Say "    Releases   $plainUrl/releases" 'Gray'
+    $webBase = ($plainUrl -replace '\.git$', '')
+    Say "    仓库地址   $webBase" 'White'
+    Say "    Releases   $webBase/releases" 'Gray'
     Say ''
     Say '    接下来可以做（可选）：' 'White'
     Say '      · Settings → Pages 可以托管一套在线说明文档' 'Gray'
     Say '      · 徽章可以换成你自己仓库的 Actions/Release 链接' 'Gray'
     Say ''
-    try { Start-Process $plainUrl } catch { }
+    try { Start-Process $webBase } catch { }
     Read-Host '  按回车关闭'
 } finally {
     Pop-Location
