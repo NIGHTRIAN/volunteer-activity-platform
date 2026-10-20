@@ -278,10 +278,21 @@ try {
         $bundleZip = Get-ChildItem (Join-Path $Root 'dist') -Filter '*.zip' -ErrorAction SilentlyContinue |
             Select-Object -First 1 -ExpandProperty FullName
 
+        # ⚠️ 两个 APK 的产物文件名**完全相同**（都叫 app-arm64-v8a-release.apk）。
+        # 直接按原文件名上传，第二个会被 GitHub 当成重名拒绝（422 already_exists），
+        # 下载端也分不清谁是谁。所以这里显式给附件起名。
+        $candidates = @(
+            [pscustomobject]@{ Path = $apkUser;  Name = '志愿活动-用户端.apk' },
+            [pscustomobject]@{ Path = $apkAdmin; Name = '志愿活动-管理端.apk' },
+            [pscustomobject]@{ Path = $bundleZip; Name = $null }   # 保持原文件名
+        )
         $assets = @()
-        foreach ($a in @($apkUser, $apkAdmin, $bundleZip)) {
-            if ($a -and (Test-Path -LiteralPath $a)) { $assets += $a }
-            elseif ($a) { Warn "找不到 $a" }
+        foreach ($c in $candidates) {
+            if (-not $c.Path) { continue }
+            if (-not (Test-Path -LiteralPath $c.Path)) { Warn "找不到 $($c.Path)"; continue }
+            $n = $c.Name
+            if (-not $n) { $n = [System.IO.Path]::GetFileName($c.Path) }
+            $assets += [pscustomobject]@{ Path = $c.Path; Name = $n }
         }
 
         if ($assets.Count -eq 0) {
@@ -337,18 +348,20 @@ try {
                 if ($release.assets) { $existingNames = @($release.assets | ForEach-Object { $_.name }) }
                 $uploadUrl = ($release.upload_url -replace '\{\?name,label\}', '')
 
-                foreach ($file in $assets) {
-                    # 不能用 Split-Path -LiteralPath ... -Leaf：PS 5.1 里那是"歧义参数集"，
-                    # 会抛 AmbiguousParameterSet（-LiteralPath 不能和 -Leaf 同时用）。
-                    $name = [System.IO.Path]::GetFileName($file)
+                foreach ($asset in $assets) {
+                    $file = $asset.Path
+                    $name = $asset.Name
                     if ($existingNames -contains $name) {
                         Ok "$name 已存在，跳过"
                         continue
                     }
                     Say "      上传 $name（$([math]::Round((Get-Item -LiteralPath $file).Length / 1MB, 1)) MB）…" 'DarkGray'
+                    # ⚠️ 必须写 ${uploadUrl}：PowerShell 的变量名允许 `?`，
+                    # 写成 "$uploadUrl?name=..." 时它会把 `uploadUrl?name` 整个当成变量名，
+                    # 结果 URI 变成 "=xxx.apk" → Invalid URI: The hostname could not be parsed。
                     try {
                         $null = Invoke-RestMethod -Method POST `
-                            -Uri "$uploadUrl?name=$([uri]::EscapeDataString($name))" `
+                            -Uri "${uploadUrl}?name=$([uri]::EscapeDataString($name))" `
                             -Headers $headers -ContentType 'application/octet-stream' `
                             -InFile $file -TimeoutSec 900
                         Ok "$name"
