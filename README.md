@@ -281,6 +281,16 @@ cd packages/shared_core && flutter test
 > **不作为志愿时长统计与认定的权威依据**。导出文件首行即带此声明。上线使用前请自行
 > 完成隐私合规与安全评估（尤其是定位信息与个人信息）。
 
+### 维护者：发布到 GitHub
+
+本仓库已初始化好（`main` 分支、`.gitignore` 已排除凭据与产物）。要发到 GitHub：
+
+```powershell
+tools\publish-github.bat          # 双击也行，会问你要 token
+```
+
+它做三件事：建仓库（已存在则跳过）→ 推送全部源码 → 把两个 APK 与整合包传到 Release。
+token 只在本次命令里用一次，不写进 `.git/config`。
 ## 贡献
 
 见 [CONTRIBUTING.md](CONTRIBUTING.md)。欢迎提 Issue 与 PR —— 特别是
