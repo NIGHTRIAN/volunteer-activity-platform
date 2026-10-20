@@ -4,23 +4,38 @@
 #
 #  ## 为什么需要它
 #
-#  这台机器上没有安装 gh、也没有配置任何 GitHub 凭据，所以"发布"没法自动化到
+#  这台机器上通常没有 gh、也没有配置 GitHub 凭据，所以"发布"没法自动化到
 #  "点一下就好"。这个脚本把剩下的步骤压缩成：**填一次 token**。
 #
 #  ## 用法
 #
 #  双击 tools\publish-github.bat（会问你要 token，输入时不显示）
 #
+#  重复运行是**安全**的：仓库已存在就跳过创建，已是最新就跳过推送，
+#  Release 已存在就只补传缺的附件。
+#
 #  ## Token 怎么弄（30 秒）
 #
 #  1. 打开 https://github.com/settings/tokens
 #  2. **Generate new token (classic)** → 勾选 **repo**（整块勾上就行）
-#     · 用 Fine-grained token 也可以，但它**不能替你新建仓库**；
+#     · Fine-grained token 也行，但它**不能替你新建仓库**；
 #       那就先在网页上建一个空仓库（不要勾 README），脚本会自动识别并直接推送。
 #  3. 复制生成的 token（ghp_ 开头），粘贴到提示里
 #
 #  安全：token 只在本次执行的命令行参数里用一次，**不写进 .git/config**，
 #  也不会被打印出来。
+#
+#  ## 踩过的坑（别改回去）
+#
+#  最初这个脚本在 `$ErrorActionPreference = 'Stop'` 下直接调 `git push`。
+#  **git 把进度信息写在 stderr 上**（"Everything up-to-date" 也是），
+#  PowerShell 会把 stderr 当成 ErrorRecord → 在 `Stop` 下抛终止错误，
+#  脚本当场退出。于是：代码其实推上去了，但后面的主题标签、Release 全没执行，
+#  用户看到一大段红色报错以为失败了。
+#
+#  所以现在所有 git 调用都走 [Invoke-Git]：它把 EAP 临时降为 Continue，
+#  只认 `$LASTEXITCODE`。这不是"容错"，是因为**在 PowerShell 里退出码才是
+#  唯一可靠的成败信号**，stderr 有正常内容。
 #
 # =====================================================================
 
@@ -43,6 +58,28 @@ function Step($t) { Say "  . $t" 'Cyan' }
 function Ok($t) { Say "  + $t" 'Green' }
 function Warn($t) { Say "  ! $t" 'Yellow' }
 function Fail($t) { Say "  X $t" 'Red' }
+
+<#
+  执行 git 并返回 { Output, Code }。
+
+  ⚠️ 必须临时关掉 ErrorActionPreference：git 的正常输出（进度、up-to-date、
+  "To https://..."）走 stderr，EAP=Stop 下会被当成异常直接终止脚本。
+#>
+function Invoke-Git {
+    param([string[]]$ArgsList, [switch]$Quiet)
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $out = & git @ArgsList 2>&1
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+    if (-not $Quiet) {
+        $out | ForEach-Object { Say "      $_" 'DarkGray' }
+    }
+    return [pscustomobject]@{ Output = @($out); Code = $code }
+}
 
 function Ask-Secret($prompt) {
     $secure = Read-Host -Prompt $prompt -AsSecureString
@@ -89,25 +126,29 @@ try {
     Step '检查本地仓库'
     if (-not (Test-Path (Join-Path $Root '.git'))) { Fail '这不是 git 仓库（找不到 .git）'; exit 1 }
 
-    $branch = (& git branch --show-current)
+    $branch = (Invoke-Git @('branch', '--show-current') -Quiet).Output
+    $branch = "$branch".Trim()
     if (-not $branch) { $branch = 'main' }
-    $commits = (& git rev-list --count HEAD 2>$null)
+
+    $commits = (Invoke-Git @('rev-list', '--count', 'HEAD') -Quiet).Output
     if (-not $commits -or [int]$commits -eq 0) { Fail '还没有任何提交，先 git add -A 再 git commit'; exit 1 }
 
-    $files = & git -c core.quotepath=false ls-files
+    $files = (Invoke-Git @('-c', 'core.quotepath=false', 'ls-files') -Quiet).Output
     $bytes = 0
     foreach ($f in $files) {
         $p = Join-Path $Root $f
         if (Test-Path -LiteralPath $p) { $bytes += (Get-Item -LiteralPath $p).Length }
     }
     $sizeMb = [math]::Round($bytes / 1MB, 1)
-    $dirty = (& git -c core.quotepath=false status --porcelain) | Measure-Object
+
+    $dirtyLines = (Invoke-Git @('-c', 'core.quotepath=false', 'status', '--porcelain') -Quiet).Output |
+        Where-Object { "$_".Trim() -ne '' }
 
     Say "    仓库      $Root" 'DarkGray'
     Say "    分支      $branch（$commits 次提交）" 'DarkGray'
     Say "    内容      $($files.Count) 个文件 / $sizeMb MB" 'DarkGray'
-    if ($dirty.Count -gt 0) {
-        Warn "还有 $($dirty.Count) 处未提交的改动，不会被推上去"
+    if ($dirtyLines.Count -gt 0) {
+        Warn "还有 $($dirtyLines.Count) 处未提交的改动，不会被推上去"
         Say '       （要一起推就关掉窗口，先 git add -A 再 git commit）' 'DarkGray'
     } else {
         Ok '工作区干净'
@@ -158,7 +199,7 @@ try {
     }
     if ($created.__error) {
         if ($created.Status -eq 422) {
-            Ok '仓库已存在，直接推送'
+            Ok '仓库已存在，继续'
         } else {
             # 可能是 Fine-grained token 不能建仓库 —— 仓库已存在就还能继续
             $probe = Invoke-GitHub -Method GET -Path "/repos/$User/$Repo" -Headers $headers
@@ -171,31 +212,32 @@ try {
                 Say "      2) 先在网页上建一个空仓库 https://github.com/new（名字填 $Repo，不要勾 README），再重跑本脚本" 'DarkGray'
                 exit 1
             }
-            Ok '仓库已存在（可能是你刚在网页上建的），直接推送'
+            Ok '仓库已存在，继续'
         }
     } else {
         Ok "已创建：$($created.html_url)"
     }
 
     # -- 4. 推送 ----------------------------------------------------
-    Step '推送源码（首次约 14 MB，视网络 30 秒到 2 分钟）'
+    Step '推送源码'
     $plainUrl = "https://github.com/$User/$Repo.git"
     $authUrl = "https://$User`:$Token@github.com/$User/$Repo.git"
 
-    $existing = (& git remote) 2>&1
-    if ($existing -contains 'origin') { & git remote set-url origin $plainUrl 2>&1 | Out-Null }
-    else { & git remote add origin $plainUrl 2>&1 | Out-Null }
+    $remotes = (Invoke-Git @('remote') -Quiet).Output
+    if ($remotes -contains 'origin') {
+        Invoke-Git @('remote', 'set-url', 'origin', $plainUrl) -Quiet | Out-Null
+    } else {
+        Invoke-Git @('remote', 'add', 'origin', $plainUrl) -Quiet | Out-Null
+    }
 
     # token 只在这一条命令里出现，不落进 .git/config
-    & git push $authUrl "${branch}:${branch}" 2>&1 | ForEach-Object { "      $_" }
-    $pushOk = ($LASTEXITCODE -eq 0)
-    if (-not $pushOk) {
+    $push = Invoke-Git @('push', $authUrl, "${branch}:${branch}")
+    if ($push.Code -ne 0) {
         # 远端可能已有内容（建仓库时勾了 README / 之前推过别的东西）
         Warn '普通推送被拒，尝试覆盖远端历史…'
-        & git push $authUrl "${branch}:${branch}" --force 2>&1 | ForEach-Object { "      $_" }
-        $pushOk = ($LASTEXITCODE -eq 0)
+        $push = Invoke-Git @('push', $authUrl, "${branch}:${branch}", '--force')
     }
-    if (-not $pushOk) {
+    if ($push.Code -ne 0) {
         Fail '推送失败'
         Say '    常见原因：' 'DarkGray'
         Say '      * token 没有 repo 权限（重新生成并整块勾上 repo）' 'DarkGray'
@@ -203,11 +245,15 @@ try {
         Say '      * 公司/校园网代理拦了 github.com（设 HTTPS_PROXY 后重试）' 'DarkGray'
         exit 1
     }
-    Ok '推送完成'
+    if (($push.Output | Out-String) -match 'Everything up-to-date') {
+        Ok '远端已是最新，无需推送'
+    } else {
+        Ok '推送完成'
+    }
 
     # 设上游（不 fetch：私有仓库匿名取不到，fetch 会失败）
-    & git config "branch.$branch.remote" 'origin' 2>&1 | Out-Null
-    & git config "branch.$branch.merge" "refs/heads/$branch" 2>&1 | Out-Null
+    Invoke-Git @('config', "branch.$branch.remote", 'origin') -Quiet | Out-Null
+    Invoke-Git @('config', "branch.$branch.merge", "refs/heads/$branch") -Quiet | Out-Null
 
     # -- 5. 仓库元信息 ----------------------------------------------
     Step '设置简介与主题标签'
@@ -215,19 +261,22 @@ try {
         description = $Description
         topics      = @('flutter', 'vue3', 'nodejs', 'sqlite', 'volunteer', 'attendance', 'geolocation', 'education')
     }
-    if ($patched.__error) { Warn "元信息没设置成功（HTTP $($patched.Status)），不影响代码" }
-    else { Ok '已完成' }
+    if ($patched.__error) {
+        Warn "主题标签没设置成功（HTTP $($patched.Status)），不影响代码"
+    } else {
+        Ok ('主题：' + ($patched.topics -join ', '))
+    }
 
     # -- 6. Release + 附件 -----------------------------------------
     if (-not $SkipRelease) {
         Step '创建 Release 并上传安装包'
         $apkUser = Join-Path $Root 'apps\user_app\build\app\outputs\flutter-apk\app-arm64-v8a-release.apk'
         $apkAdmin = Join-Path $Root 'apps\admin_app\build\app\outputs\flutter-apk\app-arm64-v8a-release.apk'
-        $bundleFlex = Get-ChildItem (Join-Path $Root 'dist') -Filter '*.zip' -ErrorAction SilentlyContinue |
+        $bundleZip = Get-ChildItem (Join-Path $Root 'dist') -Filter '*.zip' -ErrorAction SilentlyContinue |
             Select-Object -First 1 -ExpandProperty FullName
 
         $assets = @()
-        foreach ($a in @($apkUser, $apkAdmin, $bundleFlex)) {
+        foreach ($a in @($apkUser, $apkAdmin, $bundleZip)) {
             if ($a -and (Test-Path -LiteralPath $a)) { $assets += $a }
             elseif ($a) { Warn "找不到 $a" }
         }
@@ -235,8 +284,9 @@ try {
         if ($assets.Count -eq 0) {
             Warn '没有可上传的产物，跳过。先跑 tools\build-release.cmd 和 tools\make-deploy-bundle.ps1'
         } else {
+            $tag = 'v0.1.0'
             $release = Invoke-GitHub -Method POST -Path "/repos/$User/$Repo/releases" -Headers $headers -Body @{
-                tag_name   = 'v0.1.0'
+                tag_name   = $tag
                 name       = 'v0.1.0 · 首个可运行版本'
                 body       = @'
 ## 这是什么
@@ -260,14 +310,36 @@ try {
                 draft      = $false
                 prerelease = $false
             }
+
             if ($release.__error) {
-                Warn "Release 没建成（HTTP $($release.Status)）"
-                if ($release.Detail) { Say "    $($release.Detail)" 'DarkGray' }
-            } else {
-                Ok "Release：$($release.html_url)"
+                if ($release.Status -eq 422) {
+                    # 重跑时 tag 已存在：取回已有的 Release，只补传缺的附件
+                    $release = Invoke-GitHub -Method GET -Path "/repos/$User/$Repo/releases/tags/$tag" -Headers $headers
+                    if ($release.__error) {
+                        Warn "Release 取不回来（HTTP $($release.Status)），跳过上传"
+                        $release = $null
+                    } else {
+                        Ok "Release $tag 已存在，检查附件"
+                    }
+                } else {
+                    Warn "Release 没建成（HTTP $($release.Status)）"
+                    if ($release.Detail) { Say "    $($release.Detail)" 'DarkGray' }
+                    $release = $null
+                }
+            }
+
+            if ($release) {
+                if ($release.html_url) { Ok "Release：$($release.html_url)" }
+                $existingNames = @()
+                if ($release.assets) { $existingNames = @($release.assets | ForEach-Object { $_.name }) }
                 $uploadUrl = ($release.upload_url -replace '\{\?name,label\}', '')
+
                 foreach ($file in $assets) {
                     $name = Split-Path -LiteralPath $file -Leaf
+                    if ($existingNames -contains $name) {
+                        Ok "$name 已存在，跳过"
+                        continue
+                    }
                     Say "      上传 $name（$([math]::Round((Get-Item -LiteralPath $file).Length / 1MB, 1)) MB）…" 'DarkGray'
                     try {
                         $null = Invoke-RestMethod -Method POST `

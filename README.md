@@ -291,6 +291,8 @@ tools\publish-github.bat          # 双击也行，会问你要 token
 
 它做三件事：建仓库（已存在则跳过）→ 推送全部源码 → 把两个 APK 与整合包传到 Release。
 token 只在本次命令里用一次，不写进 `.git/config`。
+
+**重复运行是安全的**：已存在的仓库、已推的提交、已上传的附件都会跳过，只补做缺的步骤。
 ## 贡献
 
 见 [CONTRIBUTING.md](CONTRIBUTING.md)。欢迎提 Issue 与 PR —— 特别是
