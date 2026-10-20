@@ -1,12 +1,21 @@
 @echo off
-chcp 65001 >nul
+rem ---------------------------------------------------------------------
+rem  Publish this repository to GitHub.
+rem  Double-click this file; it will ask for a token.
+rem
+rem  NOTE: keep this file ASCII-only. Windows cmd parses .bat with the OEM
+rem  code page (936/GBK on Chinese Windows); UTF-8 Chinese text in a .bat
+rem  gets split into garbage commands like "'Hub' is not recognized".
+rem  All Chinese messages live in publish-github.ps1 instead.
+rem ---------------------------------------------------------------------
 setlocal
-title 发布到 GitHub
+title Publish to GitHub
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0publish-github.ps1" %*
 set EXITCODE=%ERRORLEVEL%
 if not "%EXITCODE%"=="0" (
   echo.
-  echo   发布没有成功退出（代码 %EXITCODE%）。上面有原因。
+  echo   Publish did not finish successfully ^(exit code %EXITCODE%^). Reason is above.
   pause
 )
-endlocal
+rem Expand EXITCODE before endlocal drops it, then propagate to the caller.
+endlocal & exit /b %EXITCODE%
