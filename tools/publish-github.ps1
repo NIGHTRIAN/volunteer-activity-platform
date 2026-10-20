@@ -227,7 +227,7 @@ try {
         $assets = @(
             (Join-Path $Root 'apps\user_app\build\app\outputs\flutter-apk\app-arm64-v8a-release.apk'),
             (Join-Path $Root 'apps\admin_app\build\app\outputs\flutter-apk\app-arm64-v8a-release.apk'),
-            (Join-Path $Root 'dist\志愿活动平台-服务器整合包.zip')
+            (Get-ChildItem (Join-Path $Root 'dist') -Filter '*.zip' -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName)
         ) | Where-Object { Test-Path $_ }
 
         if ($assets.Count -eq 0) {
