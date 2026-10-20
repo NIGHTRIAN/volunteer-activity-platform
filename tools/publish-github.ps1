@@ -130,7 +130,9 @@ try {
     $branch = "$branch".Trim()
     if (-not $branch) { $branch = 'main' }
 
-    $commits = (Invoke-Git @('rev-list', '--count', 'HEAD') -Quiet).Output
+    # ⚠️ Invoke-Git 的 Output 永远是数组（可能只有一项），直接 [int] 转换会报
+    # "Cannot convert System.Object[] to System.Int32"。先拼成字符串再转。
+    $commits = "$((Invoke-Git @('rev-list', '--count', 'HEAD') -Quiet).Output)".Trim()
     if (-not $commits -or [int]$commits -eq 0) { Fail '还没有任何提交，先 git add -A 再 git commit'; exit 1 }
 
     $files = (Invoke-Git @('-c', 'core.quotepath=false', 'ls-files') -Quiet).Output
@@ -257,15 +259,16 @@ try {
 
     # -- 5. 仓库元信息 ----------------------------------------------
     Step '设置简介与主题标签'
-    $patched = Invoke-GitHub -Method PATCH -Path "/repos/$User/$Repo" -Headers $headers -Body @{
-        description = $Description
-        topics      = @('flutter', 'vue3', 'nodejs', 'sqlite', 'volunteer', 'attendance', 'geolocation', 'education')
-    }
-    if ($patched.__error) {
-        Warn "主题标签没设置成功（HTTP $($patched.Status)），不影响代码"
-    } else {
-        Ok ('主题：' + ($patched.topics -join ', '))
-    }
+    $patched = Invoke-GitHub -Method PATCH -Path "/repos/$User/$Repo" -Headers $headers -Body @{ description = $Description }
+    if ($patched.__error) { Warn "简介没设置成功（HTTP $($patched.Status)），不影响代码" }
+    else { Ok '简介已更新' }
+
+    # ⚠️ 主题标签**必须走专门的接口**：在 PATCH /repos 里带 topics 会被静默忽略
+    # （实测：返回 200，但 /topics 仍然是空数组）。
+    $topics = @('flutter', 'vue3', 'nodejs', 'sqlite', 'volunteer', 'attendance', 'geolocation', 'education')
+    $tk = Invoke-GitHub -Method PUT -Path "/repos/$User/$Repo/topics" -Headers $headers -Body @{ names = $topics }
+    if ($tk.__error) { Warn "主题标签没设置成功（HTTP $($tk.Status)）" }
+    else { Ok ('主题：' + ($tk.names -join ', ')) }
 
     # -- 6. Release + 附件 -----------------------------------------
     if (-not $SkipRelease) {
@@ -335,7 +338,9 @@ try {
                 $uploadUrl = ($release.upload_url -replace '\{\?name,label\}', '')
 
                 foreach ($file in $assets) {
-                    $name = Split-Path -LiteralPath $file -Leaf
+                    # 不能用 Split-Path -LiteralPath ... -Leaf：PS 5.1 里那是"歧义参数集"，
+                    # 会抛 AmbiguousParameterSet（-LiteralPath 不能和 -Leaf 同时用）。
+                    $name = [System.IO.Path]::GetFileName($file)
                     if ($existingNames -contains $name) {
                         Ok "$name 已存在，跳过"
                         continue
