@@ -1,0 +1,21 @@
+name: shared_core
+description: 志愿活动信息平台 · 两端 App 共享的领域模型、契约常量、网络层与错误码
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  # 纯 Dart 领域层：不依赖 Flutter，便于单测与服务端复用
+  http: ^1.2.0
+  json_annotation: ^4.9.0
+  meta: ^1.15.0
+  crypto: ^3.0.3
+  collection: ^1.18.0
+
+dev_dependencies:
+  test: ^1.25.0
+  build_runner: ^2.4.9
+  json_serializable: ^6.8.0
+  lints: ^5.0.0

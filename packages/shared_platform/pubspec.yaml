@@ -1,0 +1,52 @@
+name: shared_platform
+description: 志愿活动信息平台 · 端能力封装（定位、安全存储、设备指纹、网络状态）
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_core:
+    path: ../shared_core
+
+  # 定位：**按需单次采集**，不申请 Always（方案 §7）。
+  geolocator: ^13.0.1
+  # 令牌存储：Android Keystore / iOS Keychain，不落明文（方案 §3）。
+  flutter_secure_storage: ^9.2.2
+  # 设备指纹：Android ID / iOS identifierForVendor（方案 §2 设备绑定）。
+  device_info_plus: ^11.1.0
+  # 网络状态：触发离线补传（方案 §9）。
+  connectivity_plus: ^6.0.5
+  # 模拟定位检测（验收 A13）。Android 侧安全提供者检查。
+  safe_device: ^1.1.7
+  # 取本机 IP，用于校园网辅证（方案 §6.1 的 +10 分）。
+  network_info_plus: ^6.0.1
+  # ⚠️ 已移除 workmanager（原先声明为 ^0.5.2）。
+  #
+  # 两个原因，任一条都足够：
+  #
+  # 1. **它从未被使用**。全仓库没有任何一行代码引用它——它只是当初
+  #    "离线补传可能需要后台任务"的想法留下的空声明。依赖越少，
+  #    构建越稳、攻击面越小（方案 §1.3 的可复现要求）。
+  #
+  # 2. **它与方案 §6.2 的取向相悖**。方案明确「不启用推送，由 App 前台
+  #    轮询拉取；App 不承担任何定时判定」。后台任务正是"App 承担定时职责"的
+  #    典型形态。离线证据的补传已由 `OfflineQueue` 覆盖：
+  #      * 网络恢复时自动补传（AppShell 订阅 ConnectivityService 的边沿）；
+  #      * App 下次启动时补传；
+  #      * 用户在「我的记录」里手动重试。
+  #    这三条路径都是**前台**的，可预期、可解释，也不需要后台执行权限。
+  #
+  # 附带收益：workmanager 0.5.2 无法用 Kotlin 2.4 / AGP 9.1 编译
+  #（`compileDebugKotlin` 失败），移除它是让 APK 能构建的必要条件。
+  path_provider: ^2.1.4
+  package_info_plus: ^8.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0

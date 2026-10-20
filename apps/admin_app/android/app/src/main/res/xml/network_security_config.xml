@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  网络安全配置。
+
+  ## 为什么要放开明文 HTTP
+
+  开发期 Mock 服务端跑在 `http://10.0.2.2:8080`（真机则是局域网 IP），
+  而 Android 9（API 28）起**默认禁止**明文 HTTP。不配置这一项，
+  所有请求都会失败且错误信息与"网络不通"完全一样，极难排查。
+
+  ## 为什么只放开这几段而不是整体 cleartextTrafficPermitted="true"
+
+  `10.0.2.2` 是 Android 模拟器访问宿主机 `127.0.0.1` 的固定地址；
+  私有网段用于真机连开发机。把范围限制在这几段，
+  保证**公网域名仍然强制 HTTPS** —— 否则一旦上线，
+  这个配置会变成一个静默的降级通道，让本该加密的请求走明文。
+-->
+<network-security-config>
+    <!-- 默认：一切走系统默认（公网强制 HTTPS）。 -->
+    <base-config cleartextTrafficPermitted="false" />
+
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Android 模拟器 → 宿主机 -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- 本机回环（桌面/CI 上跑 Flutter 时用） -->
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <!-- 局域网私有网段：真机连开发机 -->
+        <domain includeSubdomains="false">192.168.0.0</domain>
+    </domain-config>
+</network-security-config>

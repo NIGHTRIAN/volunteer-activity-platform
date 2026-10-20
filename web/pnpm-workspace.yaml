@@ -1,0 +1,19 @@
+# pnpm 配置。
+#
+# ## 为什么需要这个文件
+#
+# pnpm 默认**阻止依赖执行安装脚本** —— 这是个好默认值，能挡掉一类
+# 供应链攻击。但 `esbuild` 是 Vite 的必需依赖，它的安装脚本负责
+# 下载平台专用二进制；不放行就没法构建
+# （实测：`vite build` 失败并报 `ERR_PNPM_IGNORED_BUILDS`）。
+#
+# pnpm 在检测到被忽略的构建脚本时会**自己生成这个文件**并填上
+# `set this to true or false` 占位符，要求你逐一表态。这里放行 esbuild。
+#
+# ## 只放行这一个
+#
+# 不要图省事用全局开关（`dangerouslyAllowAllBuilds` 之类）——
+# 那等于把这道防护整个关掉。将来新增依赖若也需要构建脚本，
+# 应当逐个评审后加入。
+allowBuilds:
+  esbuild: true

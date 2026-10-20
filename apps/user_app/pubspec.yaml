@@ -1,0 +1,26 @@
+name: user_app
+description: "志愿活动信息平台 · 用户端（志愿者扫码即用）"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  shared_core:
+    path: ../../packages/shared_core
+  shared_ui:
+    path: ../../packages/shared_ui
+  shared_platform:
+    path: ../../packages/shared_platform
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

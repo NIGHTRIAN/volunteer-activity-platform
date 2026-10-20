@@ -1,0 +1,16 @@
+{
+  "name": "volunteer-mock-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "志愿活动信息平台 · 服务端 Mock。零外部依赖，按《接口契约》字段字典实现，供两端 App 在 A0/A1 阶段独立开发。",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/server.js --seed-only",
+    "smoke": "node test/smoke.js"
+  }
+}

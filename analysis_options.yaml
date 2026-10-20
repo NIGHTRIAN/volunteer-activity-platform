@@ -1,0 +1,30 @@
+# 静态分析基线：两端 App 与共享包统一执行。
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # 方案 §6.1「坐标系必须为 WGS-84」、§7「日志不得含完整手机号/学号」这类要求
+    # 靠人工评审把关，这里先把明显的正确性问题提升为错误。
+    missing_required_param: error
+    missing_return: error
+    todo: ignore
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/generated/**"
+    - "tools/**"
+    - "mock_server/**"
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_print # 日志统一走 TelemetryLogger，禁止 print 泄露信息
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_locals
+    - unnecessary_await_in_return
+    - use_super_parameters

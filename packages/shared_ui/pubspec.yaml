@@ -1,0 +1,25 @@
+name: shared_ui
+description: 志愿活动信息平台 · 设计系统与两端共用组件
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_core:
+    path: ../shared_core
+  # 网络状态横条需要 ConnectivityState。
+  # 这是**唯一**一处 shared_ui 依赖 shared_platform 的地方，可以接受：
+  # "离线/待上传"横条本身就是弱网体验的一部分，让每个 App 各写一遍
+  # 必然出现两端文案与配色不一致。
+  shared_platform:
+    path: ../shared_platform
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

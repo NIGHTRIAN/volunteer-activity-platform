@@ -1,0 +1,147 @@
+/**
+ * 把本项目的设计令牌映射到 Element Plus 的 CSS 变量。
+ *
+ * ## 为什么这样做，而不是给组件写一堆覆盖样式
+ *
+ * Element Plus 的组件样式几乎都基于它自己的 CSS 变量。
+ * 改变量 = 组件内部所有状态（hover / active / disabled / focus）
+ * 一起跟着变；而挑具体类名去覆盖，则会在每个组件、每种状态下
+ * 各写一遍，且组件库升级后就失效。
+ *
+ * 所以这里的策略是：**只改变量，不写选择器**（少数无处可改的
+ * 例外在文件末尾单独标注）。
+ *
+ * 变量名以 Element Plus 的实际定义为准（`--el-*`）。
+ */
+
+:root {
+  /* ── 主色 ─────────────────────────────────────────────────────────
+     Element Plus 的默认主色 #409eff 对白底只有约 3.0:1 对比度，
+     不足以承载正文级的蓝色文字（需 4.5:1）。
+     这里换成更深的蓝，同时把 hover / active 的梯度也一起给全 ——
+     只改主色而不管梯度，会让按钮的悬停态看起来"发灰"。
+  */
+  --el-color-primary: var(--c-primary);
+  --el-color-primary-light-3: #5b93e9;
+  --el-color-primary-light-5: #8db4ef;
+  --el-color-primary-light-7: #bed5f6;
+  --el-color-primary-light-8: #d6e4f9;
+  --el-color-primary-light-9: var(--c-primary-soft);
+  --el-color-primary-dark-2: var(--c-primary-active);
+
+  /* ── 状态色 ─────────────────────────────────────────────────────── */
+  --el-color-success: var(--c-success);
+  --el-color-success-light-9: var(--c-success-soft);
+  --el-color-warning: var(--c-warning);
+  --el-color-warning-light-9: var(--c-warning-soft);
+  --el-color-danger: var(--c-danger);
+  --el-color-danger-light-9: var(--c-danger-soft);
+  --el-color-error: var(--c-danger);
+  --el-color-info: var(--c-info);
+  --el-color-info-light-9: var(--c-info-soft);
+
+  /* ── 文字 ─────────────────────────────────────────────────────────
+     Element Plus 用 regular / primary / secondary / placeholder / disabled
+     五档。本项目只有四档，于是把它的 regular 与 primary 都指向
+     同一档 —— 否则同一段文字在不同组件里颜色会不一样。
+  */
+  --el-text-color-primary: var(--c-text-primary);
+  --el-text-color-regular: var(--c-text-secondary);
+  --el-text-color-secondary: var(--c-text-tertiary);
+  --el-text-color-placeholder: var(--c-text-tertiary);
+  --el-text-color-disabled: var(--c-text-disabled);
+
+  /* ── 边框与背景 ─────────────────────────────────────────────────── */
+  --el-border-color: var(--c-border);
+  --el-border-color-light: var(--c-border);
+  --el-border-color-lighter: var(--c-divider);
+  --el-border-color-extra-light: var(--c-divider);
+  --el-border-color-hover: var(--c-border-strong);
+  --el-fill-color-blank: var(--c-surface);
+  --el-fill-color-light: var(--c-surface-sunken);
+  --el-bg-color: var(--c-surface);
+  --el-bg-color-page: var(--c-bg);
+  --el-bg-color-overlay: var(--c-surface);
+
+  /* ── 圆角 ─────────────────────────────────────────────────────── */
+  --el-border-radius-base: var(--r-sm);
+  --el-border-radius-small: var(--r-xs);
+  --el-border-radius-round: var(--r-full);
+
+  /* ── 字体 ─────────────────────────────────────────────────────────
+     不引入 Web 字体（方案 §8.4 提到带宽是瓶颈，中文字库动辄数 MB）。
+  */
+  --el-font-family: var(--font-sans);
+  /*
+    ⚠️ 刻意**不用** --el-font-size-base 的默认值来承载正文。
+    Element Plus 的 base 是 14px，而本项目的正文是 16px
+    （中文字形复杂，14px 在长段落里读起来吃力）。
+    但表单控件仍用 14px（见下），这与 better-typography 第 16 条一致：
+    UI 文本可以小，正文不行。
+  */
+  --el-font-size-base: var(--fs-body-sm);
+  --el-font-size-small: var(--fs-caption);
+  --el-font-size-extra-small: var(--fs-micro);
+  --el-font-size-medium: var(--fs-body);
+  --el-font-size-large: var(--fs-title);
+
+  /* ── 控件高度 ─────────────────────────────────────────────────────
+     默认 32px 偏小，触摸时容易点偏。这里提到 36px，
+     并保证焦点环清晰可见。
+  */
+  --el-component-size: var(--control-h);
+  --el-component-size-small: 32px;
+  --el-component-size-large: var(--control-h-lg);
+
+  /* ── 阴影 ─────────────────────────────────────────────────────── */
+  --el-box-shadow: var(--shadow-md);
+  --el-box-shadow-light: var(--shadow-sm);
+  --el-box-shadow-lighter: var(--shadow-xs);
+  --el-box-shadow-dark: var(--shadow-lg);
+
+  /* ── 动效 ───────────────────────────────────────────────────────
+     换成可被打断的 ease-out，且尊重"减少动态效果"。
+  */
+  --el-transition-duration: var(--dur-base);
+  --el-transition-duration-fast: var(--dur-fast);
+  --el-transition-function-ease-in-out-bezier: var(--ease-out);
+  --el-transition-function-fast-bezier: var(--ease-out);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   少数无处可改的例外
+
+   以下两处没有对应的 CSS 变量，只能写选择器。位置集中在这里，
+   便于将来组件库升级时统一复查。
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* 1) 移动端输入框字号必须 ≥16px，否则 iOS Safari 聚焦时会整页放大
+      （better-typography 第 15 条）。
+      这里不用 `maximum-scale=1` 去压 —— 那会禁止用户缩放，违反 WCAG。 */
+@media (max-width: 767px) {
+  .el-input__inner,
+  .el-textarea__inner,
+  .el-select__input {
+    font-size: 16px;
+  }
+}
+
+/* 2) 按钮按下时的轻微缩放反馈（better-ui 第 9 条）。
+      统一用 0.96 —— 比 0.95 更小的值会显得夸张。
+      只对可点的按钮生效，且用 transform（可被 GPU 合成）。 */
+.el-button:not(.is-disabled):active {
+  transform: scale(0.96);
+}
+
+.el-button {
+  transition-property: transform, background-color, border-color, color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+/* 系统开启"减少动态效果"时不做缩放。 */
+@media (prefers-reduced-motion: reduce) {
+  .el-button:not(.is-disabled):active {
+    transform: none;
+  }
+}

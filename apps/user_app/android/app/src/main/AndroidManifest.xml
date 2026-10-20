@@ -1,0 +1,79 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ══ 权限（方案 §7：只申请必需项，逐项可解释）══════════════════════
+
+         用户端需要：定位（签到判定的主判据）、网络、读取 Wi-Fi 信息做辅证。
+
+         ⚠️ 刻意**不申请**的权限，以及理由：
+
+         * ACCESS_BACKGROUND_LOCATION —— 方案 §7 明确"定位只按需采集，
+           不做持续轨迹"。申请后台定位会让用户在权限页看到"始终允许"，
+           而这是最容易被拒绝、也最容易被质疑的一类权限；
+           而且我们根本用不到：签到与在岗确认都是前台动作。
+         * READ_PHONE_STATE / READ_CONTACTS / CAMERA / 相册 —— 与本项目无关。
+           权限越少，用户的信任成本越低，安装阻力也越小。
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- 精确定位：签到围栏判定需要。缺了它只能拿到 ~1km 精度的粗略位置，
+         在 300 米的签到半径下毫无意义。 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- 粗略定位：Android 12+ 允许用户只授予"大致位置"。
+         申请它是为了让系统权限弹窗出现"大致位置"这一档 ——
+         否则某些 ROM 会把该选项藏起来，用户只剩"精确"与"拒绝"两个选择，
+         而"拒绝"会让签到直接走不通。 -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- 定位不是必需硬件：平板/模拟器可能没有 GPS。
+         声明 required=false 让这类设备也能安装（用人工补录兜底），
+         否则分发渠道会直接过滤掉它们。 -->
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
+    <application
+        android:label="志愿活动"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>

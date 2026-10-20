@@ -1,0 +1,31 @@
+name: admin_app
+description: "志愿活动信息平台 · 管理端（发布者工作台）"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  shared_core:
+    path: ../../packages/shared_core
+  shared_ui:
+    path: ../../packages/shared_ui
+  shared_platform:
+    path: ../../packages/shared_platform
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # 测试用：`package:http/testing.dart` 的 MockClient 让我们能注入
+  # 一个"成功且带 data"的响应，用来守住"忘记传 decode → data 恒为 null"
+  # 这个坑（见 test/create_activity_submit_test.dart 的说明）。
+  # 它本来就是 shared_core 的传递依赖，这里只是显式声明以便测试直接 import。
+  http: ^1.2.0
+
+flutter:
+  uses-material-design: true

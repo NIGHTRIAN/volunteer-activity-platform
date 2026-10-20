@@ -1,0 +1,32 @@
+name: volunteer_platform_workspace
+description: 志愿活动信息平台 · 移动端单代码库（管理端 App / 用户端 App）
+publish_to: none
+
+# 这是一个 monorepo 的根工程，本身不是 Dart 包。
+#
+# 结构：
+#   apps/admin_app          管理端 App（软件一）
+#   apps/user_app           用户端 App（软件二）
+#   packages/shared_core    领域模型 + 契约常量（纯 Dart，零 Flutter 依赖）
+#   packages/shared_ui      设计系统与通用组件
+#   packages/shared_platform 定位、安全存储、设备指纹、连通性
+#
+# 依赖关系用 [dependency_overrides] 指向本地路径，而不是 Dart 3.6 的 pub workspace。
+# 理由：pub workspace 在本机 Flutter 3.47.7 上是实验特性，而
+# `dependency_overrides` + path 是长期稳定的做法，且不需要在根目录跑 pub get。
+#
+# 每个成员工程各自 `flutter pub get`（见 tools/flutter.cmd）。
+
+environment:
+  sdk: ^3.13.0
+
+dependency_overrides:
+  shared_core:
+    path: packages/shared_core
+  shared_ui:
+    path: packages/shared_ui
+  shared_platform:
+    path: packages/shared_platform
+
+dev_dependencies:
+  melos: ^7.0.0

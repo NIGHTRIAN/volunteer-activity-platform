@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      视口设置刻意**不加** maximum-scale / user-scalable=no。
+      虽然它能防 iOS 输入框聚焦时的自动放大，但代价是禁止用户缩放
+      —— 那会直接违反 WCAG 1.4.4（文本可缩放）。
+      正确做法是把输入框字号保持在 16px（见 src/styles/tokens.css）。
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="志愿活动信息平台 · 活动列表与详情（只读）" />
+    <!--
+      主题色与页面底色同步，避免移动端浏览器地址栏与页面出现色差。
+      值必须与 tokens.css 里的 --c-bg 一致。
+    -->
+    <meta name="theme-color" content="#f6f7f9" />
+    <!--
+      站点图标：SVG，形状与页头品牌图标一致。
+      不写 type 属性是刻意的 —— 现代浏览器按内容嗅探，
+      而写错 MIME 反而会让部分浏览器不显示图标。
+    -->
+    <link rel="icon" href="/favicon.svg" />
+    <title>志愿活动信息平台</title>
+  </head>
+  <body>
+    <!--
+      首屏骨架：JS 加载完成前就画出页面框架。
+      纯静态 HTML，不依赖任何脚本 —— 否则它自己就要等 JS，
+      那就失去意义了。
+    -->
+    <div id="app">
+      <div class="boot">
+        <div class="boot__bar"></div>
+        <div class="boot__body">
+          <div class="boot__line boot__line--title"></div>
+          <div class="boot__line"></div>
+          <div class="boot__line boot__line--short"></div>
+        </div>
+      </div>
+    </div>
+    <style>
+      /* 内联：这段样式必须在首屏立刻生效，不能等 CSS 文件下载。 */
+      .boot {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 24px 16px;
+      }
+      .boot__bar {
+        height: 56px;
+        border-radius: 12px;
+        background: #eceef2;
+        margin-bottom: 24px;
+      }
+      .boot__body {
+        padding: 20px;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 4%);
+      }
+      .boot__line {
+        height: 12px;
+        border-radius: 6px;
+        background: #eceef2;
+        margin-bottom: 12px;
+      }
+      .boot__line--title {
+        height: 20px;
+        width: 42%;
+        margin-bottom: 16px;
+      }
+      .boot__line--short {
+        width: 60%;
+        margin-bottom: 0;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .boot__line,
+        .boot__bar {
+          animation: boot-pulse 1.4s ease-in-out infinite;
+        }
+      }
+      @keyframes boot-pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.55;
+        }
+      }
+    </style>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

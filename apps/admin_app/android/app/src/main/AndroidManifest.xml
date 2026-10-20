@@ -1,0 +1,111 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ══ 权限（方案 §7：权限最小化）══════════════════════════════════
+
+         管理端需要：网络、Wi-Fi 状态、**定位（仅前台按需一次）**。
+
+         ## 定位权限为什么现在需要（与早期决定的变更）
+
+         这个 App 最初**刻意剔除了**定位权限（见下方历史说明），理由是
+         "管理端只做发布/复核，不做签到，位置判定的主体是志愿者"。
+
+         但后来加了「新建活动 → 用当前位置作为签到点」这个功能
+         （`lib/create_activity_page.dart`），发布者需要在**现场**
+         把签到点定在自己脚下。手动敲经纬度不现实 ——
+         发布者不会知道自己的经纬度是多少。
+
+         方案 §4.1 也把活动坐标的来源标为「管理端」，
+         所以坐标在管理端录入是设计本意，这里补上权限是必然结果。
+
+         ## 与用户端的关键区别
+
+         用途一：签到 / 在岗确认的在场证据。用户端必需，管理端不需要。
+         用途二：录入活动时取一次签到点坐标。管理端用，用户端不用。
+
+         管理端的定位**只在点「用当前位置」时取一次**，
+         不参与任何判定，也不上传轨迹。
+
+         ## 依然不做的事
+
+         * **不申请后台定位**（`ACCESS_BACKGROUND_LOCATION`）。
+           方案 §7 要求只按需采集，两端一样；
+         * 不采集持续轨迹；
+         * 不在启动时索取权限。只有真的点了那个按钮才会请求。
+
+         ⚠️ XML 注释里不能出现连续两个连字符（Markdown 表格的分隔线
+            就是那样写的），否则清单文件解析失败、构建报
+            "ManifestMerger2 MergeFailureException"。这里刻意不用表格。
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- 定位权限：仅用于「新建活动 → 用当前位置作为签到点」。
+         用户端用它是为了签到证据，管理端用它是为了定场地坐标 ——
+         同一个权限，两种完全不同的用途，不要混为一谈。 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!--
+      ## 历史说明（保留以便理解这段权限的来龙去脉）
+
+      在「新建活动」功能之前，管理端**不需要**定位。当时的做法是用
+      `tools:node="remove"` 把 `geolocator` 通过清单合并带进来的
+      定位权限剔除掉，理由是：
+
+      > 用户首次启动管理端时，系统会弹出定位权限请求，而管理端
+      > 永远用不到它。这会直接损害"权限最小化"这条底线的可信度。
+
+      那个判断当时是对的。现在功能变了，权限就该跟着变 ——
+      上面已经改成显式声明，并写清了用途边界。
+
+      ⚠️ 若将来又出现"管理端是否该有定位"的争论，请以上面的
+         用途表为准，而不是凭直觉。
+    -->
+
+    <application
+        android:label="志愿活动 · 管理端"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>

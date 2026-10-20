@@ -1,0 +1,223 @@
+/**
+ * 基础样式与全局排版。
+ *
+ * 这里只放**全局**规则（元素默认样式、排版基线、焦点可见性、
+ * 工具类）。任何只服务一个组件的样式都写在那个组件的
+ * `<style scoped>` 里。
+ */
+
+/* ── 重置 ─────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* 不用 62.5% 之类的小技巧：那会让 1rem ≠ 16px，
+     任何第三方组件里写死的 rem 值都会错位。 */
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  /* 只在根节点做一次（better-typography 第 17 条）：
+     macOS 上默认渲染偏重，这一句让字形更接近设计意图。 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  /* 标题行高收紧；单位无单位值，随字号缩放。 */
+  line-height: var(--lh-tight);
+  font-weight: var(--fw-semibold);
+  /* 标题用 balance，避免出现"最后一行只剩一个字"的难看的折行。 */
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ── 排版工具类 ─────────────────────────────────────────────────────
+   数量刻意很少。工具类一多，就会退化成"另一套样式系统"。
+   ──────────────────────────────────────────────────────────────────── */
+
+/* 元数据（时间、地点、部门这类）：小一号、次要色。 */
+.text-meta {
+  font-size: var(--fs-caption);
+  color: var(--c-text-tertiary);
+  line-height: var(--lh-snug);
+}
+
+/* 数字对齐：任何会变化的数字都该用它（better-typography 第 11 条）。
+   比例数字宽度不同，更新时整行会左右抖动。 */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* 长文段的宽度上限。60–75 字符是舒适区间。 */
+.measure {
+  max-width: var(--measure);
+}
+
+/* 长词/长数字（学号、链接）不撑破容器。 */
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* 屏幕阅读器专用文本。 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── 焦点可见性 ─────────────────────────────────────────────────────
+   键盘用户必须能看清焦点在哪。用 :focus-visible 而不是 :focus ——
+   后者会在鼠标点击后也显示焦点环，看起来像"卡住了"。
+   ──────────────────────────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+/* 在深色/彩色底上用白色焦点环，否则看不出。 */
+.on-primary :focus-visible {
+  outline-color: #fff;
+}
+
+/* ── 防横向溢出 ─────────────────────────────────────────────────────
+   ⚠️ 这一条是安全网，不是修复手段。
+
+   实测遇到过：窄屏（390px）下 Element Plus 的日期范围选择器与
+   复选框组会把内容顶出容器右边缘，导致**页面整体可以横向滚动**，
+   而右侧内容被裁在视口外 —— 更糟的是「已取消」这个筛选项
+   因此点不到。
+
+   根因已在组件里修掉（ActivityFilters 的 flex-basis 与 gap）。
+   这里再做两道兜底：
+
+   1. `overflow-x: clip` 阻止页面级横向滚动。
+      用 `clip` 而不是 `hidden`：`hidden` 会创建一个滚动容器，
+      副作用是让 `position: sticky` 失效（页头会不再吸顶）；
+      `clip` 不产生滚动容器，sticky 仍然工作。
+
+   2. 给媒体元素与表格一个宽度上限，避免它们单独撑破布局。
+   ──────────────────────────────────────────────────────────────────── */
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+img,
+svg,
+video,
+canvas,
+table {
+  max-width: 100%;
+}
+
+/* ── 选中文本 ───────────────────────────────────────────────────────
+   保留可选中（不要全局 user-select: none）—— 用户会想复制活动名称
+   或地址。只给选中态一点品牌色。
+   ──────────────────────────────────────────────────────────────────── */
+
+::selection {
+  background: var(--c-primary-soft);
+  color: var(--c-text-primary);
+}
+
+/* ── 滚动条 ─────────────────────────────────────────────────────────
+   默认滚动条在 Windows 上很粗，会挤压内容。收窄一点，
+   但**不隐藏**（隐藏滚动条会让用户不知道还能滚）。
+   ──────────────────────────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--c-border-strong);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--r-full);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--c-text-disabled);
+  background-clip: content-box;
+}
+
+/* ── 打印样式 ───────────────────────────────────────────────────────
+   方案 §7.3 要求"打印为 PDF"：浏览器打印 + 专用样式。
+   打印时去掉所有交互外壳，只留内容。
+   ──────────────────────────────────────────────────────────────────── */
+
+@media print {
+  :root {
+    --c-bg: #fff;
+    --shadow-xs: none;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+  }
+
+  body {
+    background: #fff;
+    /* 打印时用黑色，彩色墨水既费又浅。 */
+    color: #000;
+  }
+
+  /* 交互控件在纸面上没有意义。 */
+  .no-print {
+    display: none !important;
+  }
+
+  /* 详情展开后打印：不要把内容截断在两页之间。 */
+  .avoid-break {
+    break-inside: avoid;
+  }
+
+  a[href]::after {
+    /* 打印时把链接地址附在文字后 —— 纸面上点不了链接。 */
+    content: ' (' attr(href) ')';
+    font-size: var(--fs-micro);
+    color: #444;
+  }
+}

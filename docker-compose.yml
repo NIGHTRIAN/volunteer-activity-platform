@@ -1,0 +1,128 @@
+# 一键拉起同步服务（+ MySQL）。
+#
+# 方案 §8.1 的硬要求：
+#   > 提供 **`docker-compose.yml`**：一条命令拉起 MySQL + 同步服务，
+#   > **在任意机器可复现**
+#
+# 方案 §11.1 的验收：
+#   > **可部署性验收**：在干净机器上 `docker-compose up` 一条命令跑通
+#
+# ## ⚠️ 本文件未经本机验证
+#
+# 开发这台机器上**没有安装 Docker**，因此这一份 compose 配置
+# **没有真正跑起来验证过**。我已尽量把已知的坑都处理掉
+# （时区、健康检查顺序、数据卷、字符集），但首次在有 Docker 的
+# 机器上执行时请留意，并把问题反馈回来。详见 docs/web-server.md。
+#
+# ## 用法
+#
+#   cp .env.example .env      # 按需修改
+#   docker compose up -d      # 拉起
+#   docker compose logs -f    # 看日志
+#   docker compose down       # 停止（保留数据卷）
+#   docker compose down -v    # 停止并删除数据
+#
+# 默认用 **sqlite**（零依赖，起来就能用）。
+# 要切 MySQL：把 .env 里的 DB_DRIVER 改成 mysql、填好 DB_PASSWORD，
+# 然后 `docker compose --profile mysql up -d`。
+
+services:
+  # ── 同步服务 ────────────────────────────────────────────────────────
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: volunteer-server:latest
+    container_name: volunteer-server
+    restart: unless-stopped
+    # 端口映射到宿主机，但**只在需要时对外**。
+    # 方案 §8.2：8080 是"仅内网、不对外暴露"的端口。
+    # 生产环境下应由 Nginx 反代，不直接暴露这个端口；
+    # 这里映射是为了本地联调与真机测试方便。
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      # 容器内一律监听 0.0.0.0，否则宿主机访问不到。
+      HOST: 0.0.0.0
+      PORT: 8080
+      NODE_ENV: ${NODE_ENV:-dev}
+      TZ: Asia/Shanghai
+
+      DB_DRIVER: ${DB_DRIVER:-sqlite}
+      DB_SQLITE_FILE: /app/data/volunteer.db
+      # MySQL 相关（DB_DRIVER=mysql 时才用）
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-volunteer}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_DATABASE: ${DB_DATABASE:-volunteer}
+
+      ADMIN_INVITE_CODE: ${ADMIN_INVITE_CODE:-1111}
+      TOKEN_SECRET: ${TOKEN_SECRET:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ACCESS_LOG: ${ACCESS_LOG:-true}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    volumes:
+      # 命名卷而不是绑定挂载：避免宿主机目录权限问题
+      # （容器里以 uid 10001 的非 root 用户运行）。
+      - server-data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - volunteer
+
+  # ── MySQL（可选）────────────────────────────────────────────────────
+  #
+  # 用 profile 包起来：默认 `docker compose up` **不会**启动它。
+  # 理由：默认的 sqlite 模式零依赖、起来就能用，适合开发与演示；
+  # 而 MySQL 用的是方案 §3 指定的生产数据库，按需启用。
+  #
+  #   docker compose --profile mysql up -d
+  mysql:
+    image: mysql:8.0
+    container_name: volunteer-mysql
+    profiles: ["mysql"]
+    restart: unless-stopped
+    command:
+      # utf8mb4：方案 §3 明确要求（要存 emoji 与生僻字）。
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # 时区与容器保持一致，避免时间列被隐式转换。
+      - --default-time-zone=+08:00
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?mysql profile 需要设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE:-volunteer}
+      MYSQL_USER: ${DB_USER:-volunteer}
+      # 复用 DB_PASSWORD，避免两处密码不一致导致连不上。
+      MYSQL_PASSWORD: ${DB_PASSWORD:?mysql profile 需要设置 DB_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # 首次启动时自动执行，用于初始化字符集与授权。
+      - ./deploy/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - volunteer
+
+volumes:
+  server-data:
+  mysql-data:
+
+networks:
+  volunteer:
+    driver: bridge
